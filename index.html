@@ -745,6 +745,15 @@
     </aside>
   </main>
 
+  <div id="chatNotification" class="chat-notification">
+    <div class="chat-notification-icon">Chat</div>
+    <div class="chat-notification-content">
+      <div class="chat-notification-title">Your movie partner sent a message</div>
+      <div id="chatNotificationText" class="chat-notification-text"></div>
+    </div>
+    <button id="chatNotificationClose" class="chat-notification-close" type="button" aria-label="Close notification">x</button>
+  </div>
+
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
@@ -1248,7 +1257,11 @@
     }
 
     function roomUrl(roomId) {
-      const url = new URL(location.href);
+      // A file:// URL points to the host's private computer and cannot be shared.
+      const baseUrl = location.protocol === "file:"
+        ? "https://marmeshius.github.io/moviebox/"
+        : location.href;
+      const url = new URL(baseUrl);
       url.searchParams.set("room", roomId);
       return url.toString();
     }
@@ -1324,7 +1337,7 @@
       state.peer.on("open", () => {
         setStatus("Room ready", false);
         if (location.protocol === "file:") {
-          setLog("IMPORTANT: this page is opened as a local file. Host it on HTTPS or localhost before sharing the invite link.");
+          setLog("Room ready. Send the GitHub Pages invite link to your partner.");
         } else {
           setLog("Room ready. Send the invite link to your partner.");
         }
@@ -1728,16 +1741,3 @@ chatNotificationClose.addEventListener("click", (event) => {
     renderChatMessages();
     updateClock();
   </script>
-  <div id="chatNotification" class="chat-notification">
-  <div class="chat-notification-icon">💬</div>
-
-  <div class="chat-notification-content">
-    <div class="chat-notification-title">
-      Your movie partner sent a message
-    </div>
-
-    <div id="chatNotificationText" class="chat-notification-text"></div>
-  </div>
-
-  <button id="chatNotificationClose" class="chat-notification-close" type="button" aria-label="Close notification">×</button>
-</div>
