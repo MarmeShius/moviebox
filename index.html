@@ -432,7 +432,7 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: #2596d3;
+  background: #25d366;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -960,15 +960,11 @@
     function loadSource(kind, value, label, options = {}) {
       const { remote = false } = options;
       if (state.objectUrl && state.objectUrl !== value) {
-        URL.revokeObjectURL(state.objectUrl);
+        try { URL.revokeObjectURL(state.objectUrl); } catch {}
         state.objectUrl = null;
       }
-      if (kind === "file") {
-        state.objectUrl = value;
-      }
-      if (!remote) {
-        state.isOwner = true;
-      }
+      if (kind === "file") state.objectUrl = value;
+      if (!remote) state.isOwner = true;
       state.remoteTimeline = null;
       video.srcObject = null;
 
@@ -984,13 +980,11 @@
       controls.sourceLabel.textContent = label;
       controls.emptyState.classList.add("hidden");
 
-      const removedPublishedStream = state.isOwner && !remote ? clearPublishedStream() : false;
-
       if (!remote) {
         broadcast({
           type: "source",
           source: state.currentSource,
-          time: video.currentTime,
+          time: video.currentTime || 0,
           duration: Number.isFinite(video.duration) ? video.duration : null,
           paused: video.paused,
           rate: video.playbackRate
@@ -998,15 +992,18 @@
       }
 
       if (!remote && state.connected && kind === "file") {
-        setLog("Local file loaded. Updating the connected viewer...");
-        publishCurrentStream({ renegotiate: true }).catch(() => {
-          setLog("Could not update the viewer stream. Create a fresh host code and reconnect.");
-        });
-      } else if (!remote && state.connected && removedPublishedStream) {
-        sendRaw({ type: "media-ended" });
-        sendRenegotiationOffer().catch(() => {
-          setLog("Source changed. If the viewer still sees the old stream, reconnect with fresh codes.");
-        });
+        setLog("Local movie selected. Preparing the movie stream for your partner...");
+        prepareAndPublishFileStream();
+      }
+    }
+
+    async function prepareAndPublishFileStream() {
+      if (!state.isOwner || state.currentSource?.kind !== "file" || !state.connected) return;
+      try {
+        await waitForMetadata();
+        await publishCurrentStream({ renegotiate: true });
+      } catch {
+        setLog("The local movie could not be shared. Press Play once and try again.");
       }
     }
 
@@ -1045,58 +1042,46 @@
 
     async function applyRemotePlayback(message) {
       state.applyingRemote = true;
-      const tolerance = Number($("driftTolerance").value);
-      const viewingRemoteStream = !state.isOwner && video.srcObject;
+      const remoteTime = Number(message.time) || 0;
 
       if (message.source && state.currentSource?.id !== message.source.id) {
         if (message.source.kind === "url" && message.source.value) {
           loadSource("url", message.source.value, message.source.label || message.source.value, { remote: true });
-          setLog("Remote URL loaded. Controls are synced.");
-        } else {
-          setLog(`Remote source: "${message.source.label}". Waiting for host stream or choose the same file here.`);
+          setLog("Movie URL received. Loading the host's movie...");
+        } else if (message.source.kind === "file") {
+          setLog(`Host movie: "${message.source.label || "local file"}". Waiting for the host's movie stream...`);
         }
       }
 
-      const remoteTime = Number(message.time) || 0;
       state.remoteTimeline = {
         time: remoteTime,
         duration: Number.isFinite(message.duration) ? message.duration : null,
         paused: Boolean(message.paused),
         receivedAt: Date.now()
       };
-
       video.playbackRate = Number(message.rate) || 1;
       controls.rate.value = String(video.playbackRate);
 
-      if (!viewingRemoteStream) {
+      const syncWhenReady = () => {
+        if (state.isOwner || video.srcObject) return;
         try {
-          if (Number.isFinite(video.duration) && Math.abs(video.currentTime - remoteTime) > tolerance) {
+          if (Number.isFinite(video.duration)) {
             video.currentTime = Math.min(Math.max(remoteTime, 0), video.duration);
-          } else if (!Number.isFinite(video.duration) && Math.abs(video.currentTime - remoteTime) > tolerance) {
+          } else {
             video.currentTime = Math.max(remoteTime, 0);
           }
-        } catch {
-          setLog("Timeline will sync after the video metadata loads.");
-        }
-      }
+        } catch {}
+        if (message.paused) video.pause();
+        else video.play().catch(() => setLog("Movie loaded. Press Play once to start synced playback."));
+        updateClock();
+      };
 
-      try {
-        if (viewingRemoteStream) {
-          await video.play();
-        } else if (message.paused) {
-          video.pause();
-        } else {
-          await video.play();
-        }
-      } catch (error) {
-        setLog("Browser blocked autoplay. Press play once, then sync again.");
-      }
+      if (video.readyState >= 1) syncWhenReady();
+      else video.addEventListener("loadedmetadata", syncWhenReady, { once: true });
 
       controls.lastSync.textContent = `Last sync: received at ${new Date().toLocaleTimeString()}`;
       updateClock();
-      setTimeout(() => {
-        state.applyingRemote = false;
-      }, 150);
+      setTimeout(() => { state.applyingRemote = false; }, 150);
     }
 
     async function applyOwnerCommand(command, message = {}) {
@@ -1157,7 +1142,15 @@
 
       if (!message || typeof message !== "object") return;
 
-     if (message.type === "chat") {
+     if (message.type === "request-state") {
+        if (state.isOwner) {
+          sendPlayback("state");
+          if (state.currentSource?.kind === "file") prepareAndPublishFileStream();
+        }
+        return;
+      }
+
+      if (message.type === "chat") {
   addChatMessage(message.text, false, message.sentAt);
 
   showChatNotification(message.text);
@@ -1330,16 +1323,23 @@
 
       state.peer.on("open", () => {
         setStatus("Room ready", false);
-        setLog("Send this invite link. The other person will join automatically.");
+        if (location.protocol === "file:") {
+          setLog("IMPORTANT: this page is opened as a local file. Host it on HTTPS or localhost before sharing the invite link.");
+        } else {
+          setLog("Room ready. Send the invite link to your partner.");
+        }
       });
 
       state.peer.on("connection", (connection) => {
         state.remotePeerId = connection.peer;
         attachChannel(connection);
-        connection.on("open", () => {
+        connection.on("open", async () => {
           sendPlayback("state");
           if (state.currentSource?.kind === "file") {
-            publishCurrentStream().catch(() => setLog("Could not start the movie stream."));
+            setLog("Partner joined. Sending the local movie stream...");
+            await prepareAndPublishFileStream();
+          } else if (state.currentSource?.kind === "url") {
+            sendRaw(playbackSnapshot("source"));
           }
         });
       });
@@ -1355,12 +1355,16 @@
 
       controls.roomLink.value = roomUrl(roomId);
       setStatus("Joining", false);
-      setLog("Joining room...");
+      setLog("Joining room and waiting for the host...");
 
       state.peer.on("open", () => {
         const connection = state.peer.connect(hostPeerId(roomId), { reliable: true });
         state.remotePeerId = connection.peer;
         attachChannel(connection);
+        connection.on("open", () => {
+          sendRaw({ type: "request-state" });
+          setLog("Connected. Requesting the host's movie...");
+        });
       });
     }
 
@@ -1640,11 +1644,19 @@
       setLog("Invite link copied.");
     });
 
-    video.addEventListener("loadedmetadata", updateClock);
+    video.addEventListener("loadedmetadata", () => {
+      updateClock();
+      if (state.isOwner && state.connected && state.currentSource?.kind === "file") {
+        prepareAndPublishFileStream();
+      }
+    });
     video.addEventListener("timeupdate", updateClock);
     video.addEventListener("play", () => {
       updateClock();
       sendPlayback("play");
+      if (state.isOwner && state.connected && state.currentSource?.kind === "file" && !state.mediaCall) {
+        prepareAndPublishFileStream();
+      }
     });
     video.addEventListener("pause", () => {
       updateClock();
@@ -1729,4 +1741,3 @@ chatNotificationClose.addEventListener("click", (event) => {
 
   <button id="chatNotificationClose" class="chat-notification-close" type="button" aria-label="Close notification">×</button>
 </div>
-
