@@ -13,7 +13,7 @@
       --text: #eef3f6;
       --muted: #9eabb3;
       --line: #344049;
-      --accent: #3dd1a3;
+      --accent: #649fd3;
       --accent-2: #f2b84b;
       --danger: #ff6b6b;
       --shadow: 0 18px 50px rgba(0, 0, 0, .32);
@@ -409,6 +409,72 @@
       gap: 8px;
       scroll-behavior: smooth;
     }
+    .chat-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 330px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #1f1f27;
+  color: white;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 35px rgba(0,0,0,0.45);
+  z-index: 99999;
+  animation: chatPopupIn 0.3s ease;
+  cursor: pointer;
+}
+
+.chat-notification-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #2596d3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  flex-shrink: 0;
+}
+
+.chat-notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-notification-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.chat-notification-text {
+  font-size: 13px;
+  color: #cfcfd5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-notification-close {
+  color: #aaa;
+  font-size: 20px;
+}
+
+@keyframes chatPopupIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 
     .chat-empty {
       margin: auto;
@@ -541,7 +607,9 @@
         min-height: 46vh;
       }
     }
-  </style>
+  
+    .chat-notification{position:fixed;top:22px;right:22px;width:min(340px,calc(100vw - 44px));z-index:9999;display:none;align-items:flex-start;gap:12px;padding:13px 15px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(24,24,30,.97);box-shadow:0 12px 35px rgba(0,0,0,.42);backdrop-filter:blur(12px);animation:chatNotificationIn .28s ease-out}.chat-notification.hide{animation:chatNotificationOut .25s ease-in forwards}.chat-notification-icon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:50%;background:#25d366;color:#fff;font-size:21px}.chat-notification-content{min-width:0;flex:1}.chat-notification-title{font-weight:700;font-size:14px;margin-bottom:3px}.chat-notification-text{font-size:13px;color:#d1d1d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-notification-close{border:0;background:transparent;color:#999;font-size:22px;line-height:1;padding:0;min-height:28px;min-width:28px;display:grid;place-items:center;border-radius:6px;cursor:pointer}.chat-notification-close:hover{background:rgba(255,255,255,.08);color:#fff}@keyframes chatNotificationIn{from{opacity:0;transform:translateX(30px) scale(.96)}to{opacity:1;transform:translateX(0) scale(1)}}@keyframes chatNotificationOut{from{opacity:1;transform:translateX(0) scale(1)}to{opacity:0;transform:translateX(30px) scale(.96)}}@media(max-width:600px){.chat-notification{top:12px;right:12px;width:calc(100vw - 24px)}}
+</style>
 </head>
 <body>
   <main class="app">
@@ -591,6 +659,30 @@
     </section>
 
     <aside class="side">
+        <section class="panel chat-panel">
+        <div class="chat-header">
+          <h2>Chat</h2>
+          <span class="chat-status" id="chatStatus">Waiting for partner</span>
+        </div>
+
+        <div class="chat-messages" id="chatMessages" aria-live="polite">
+          <div class="chat-empty" id="chatEmpty">
+            When the other person joins, you can chat here while watching the movie.
+          </div>
+        </div>
+
+        <div class="chat-composer">
+          <textarea
+            id="chatInput"
+            class="chat-input"
+            rows="1"
+            maxlength="1000"
+            placeholder="Type a message..."
+            aria-label="Chat message"
+          ></textarea>
+          <button class="primary chat-send" id="chatSend" type="button">Send</button>
+        </div>
+      </section>
       <section class="panel">
         <h2>Movie Source</h2>
         <div class="stack">
@@ -649,30 +741,7 @@
         </div>
       </section>
 
-      <section class="panel chat-panel">
-        <div class="chat-header">
-          <h2>Chat</h2>
-          <span class="chat-status" id="chatStatus">Waiting for partner</span>
-        </div>
-
-        <div class="chat-messages" id="chatMessages" aria-live="polite">
-          <div class="chat-empty" id="chatEmpty">
-            When the other person joins, you can chat here while watching the movie.
-          </div>
-        </div>
-
-        <div class="chat-composer">
-          <textarea
-            id="chatInput"
-            class="chat-input"
-            rows="1"
-            maxlength="1000"
-            placeholder="Type a message..."
-            aria-label="Chat message"
-          ></textarea>
-          <button class="primary chat-send" id="chatSend" type="button">Send</button>
-        </div>
-      </section>
+      
     </aside>
   </main>
 
@@ -1088,10 +1157,13 @@
 
       if (!message || typeof message !== "object") return;
 
-      if (message.type === "chat") {
-        addChatMessage(message.text, false, message.sentAt);
-        return;
-      }
+     if (message.type === "chat") {
+  addChatMessage(message.text, false, message.sentAt);
+
+  showChatNotification(message.text);
+
+  return;
+}
 
       if (message.type === "command") {
         applyOwnerCommand(message.command, message).catch(() => setLog("Remote command could not be applied."));
@@ -1596,6 +1668,31 @@
         sendChatMessage();
       }
     });
+    const chatNotification = document.getElementById("chatNotification");
+const chatNotificationText = document.getElementById("chatNotificationText");
+const chatNotificationClose = document.getElementById("chatNotificationClose");
+
+let chatNotificationTimer;
+
+function showChatNotification(message) {
+  chatNotificationText.textContent = message;
+
+  chatNotification.style.display = "flex";
+
+  clearTimeout(chatNotificationTimer);
+
+  chatNotificationTimer = setTimeout(() => {
+    chatNotification.style.display = "none";
+  }, 4500);
+}
+
+chatNotificationClose.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  clearTimeout(chatNotificationTimer);
+  chatNotification.classList.remove("hide");
+  chatNotification.style.display = "none";
+});
 
     controls.chatInput.addEventListener("input", () => {
       // Small auto-grow effect, similar to modern chat apps.
@@ -1619,5 +1716,17 @@
     renderChatMessages();
     updateClock();
   </script>
-</body>
-</html>
+  <div id="chatNotification" class="chat-notification">
+  <div class="chat-notification-icon">💬</div>
+
+  <div class="chat-notification-content">
+    <div class="chat-notification-title">
+      Your movie partner sent a message
+    </div>
+
+    <div id="chatNotificationText" class="chat-notification-text"></div>
+  </div>
+
+  <button id="chatNotificationClose" class="chat-notification-close" type="button" aria-label="Close notification">×</button>
+</div>
+
