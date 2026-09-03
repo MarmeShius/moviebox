@@ -1,0 +1,1623 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sync Movie Room</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101214;
+      --panel: #181d21;
+      --panel-2: #20272c;
+      --text: #eef3f6;
+      --muted: #9eabb3;
+      --line: #344049;
+      --accent: #3dd1a3;
+      --accent-2: #f2b84b;
+      --danger: #ff6b6b;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .32);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 16% 12%, rgba(61, 209, 163, .18), transparent 28%),
+        linear-gradient(135deg, #101214 0%, #18161a 48%, #12191b 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      min-height: 40px;
+      border-radius: 7px;
+      padding: 0 14px;
+      cursor: pointer;
+      transition: border-color .15s ease, transform .15s ease, background .15s ease;
+    }
+
+    button:hover {
+      border-color: rgba(61, 209, 163, .74);
+      background: #263138;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #08231b;
+      font-weight: 800;
+    }
+
+    button.warn {
+      border-color: rgba(242, 184, 75, .8);
+      color: #ffe4a5;
+    }
+
+    button.icon {
+      width: 42px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #101519;
+      color: var(--text);
+      min-height: 42px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(61, 209, 163, .15);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 118px;
+      line-height: 1.4;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+
+    label {
+      color: var(--muted);
+      display: grid;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .app {
+      width: min(1480px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 370px;
+      gap: 18px;
+    }
+
+    .stage {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto minmax(300px, 1fr) auto;
+      gap: 14px;
+    }
+
+    .topbar {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #061915;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent), #8fd7ff 58%, var(--accent-2));
+      box-shadow: 0 10px 30px rgba(61, 209, 163, .2);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(21px, 3vw, 34px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 68vw;
+    }
+
+    .status-pill {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(24, 29, 33, .74);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255, 107, 107, .14);
+    }
+
+    .dot.ready {
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(61, 209, 163, .15);
+    }
+
+    .player-wrap {
+      min-height: 360px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: #050607;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      min-height: min(66vh, 720px);
+      display: block;
+      background: #050607;
+      object-fit: contain;
+    }
+
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      text-align: center;
+      pointer-events: none;
+      background:
+        linear-gradient(135deg, rgba(61, 209, 163, .08), transparent 40%),
+        #07090a;
+    }
+
+    .empty-state.hidden {
+      display: none;
+    }
+
+    .empty-state strong {
+      display: block;
+      font-size: clamp(22px, 4vw, 42px);
+      margin-bottom: 10px;
+      letter-spacing: 0;
+    }
+
+    .empty-state span {
+      color: var(--muted);
+      max-width: 520px;
+      display: block;
+      line-height: 1.5;
+    }
+
+    .transport {
+      display: grid;
+      grid-template-columns: auto auto minmax(160px, 1fr) auto auto auto;
+      gap: 10px;
+      align-items: center;
+      background: rgba(24, 29, 33, .72);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .range {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr) 64px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      min-height: 28px;
+      accent-color: var(--accent);
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
+
+    .side {
+      display: grid;
+      align-content: start;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(24, 29, 33, .82);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .15);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .stack {
+      display: grid;
+      gap: 11px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      overflow: hidden;
+      background: #101519;
+    }
+
+    .tab {
+      min-height: 39px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: #08231b;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+    }
+
+    .inline {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .inline > * {
+      min-width: 0;
+    }
+
+    .tiny {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .log {
+      min-height: 34px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      border-left: 3px solid var(--accent);
+      padding-left: 10px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+
+    /* ===== Watch-together chat ===== */
+    .chat-panel {
+      display: grid;
+      grid-template-rows: auto minmax(260px, 1fr) auto;
+      min-height: 430px;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .chat-header h2 {
+      margin: 0;
+    }
+
+    .chat-status {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .chat-messages {
+      min-height: 0;
+      max-height: 430px;
+      overflow-y: auto;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(61, 209, 163, .06), transparent 35%),
+        #0d1113;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-empty {
+      margin: auto;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      max-width: 230px;
+    }
+
+    .chat-message {
+      display: flex;
+      flex-direction: column;
+      max-width: 82%;
+      gap: 3px;
+    }
+
+    .chat-message.mine {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .chat-message.theirs {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .chat-bubble {
+      padding: 9px 11px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.4;
+      font-size: 13px;
+    }
+
+    .chat-message.mine .chat-bubble {
+      background: var(--accent);
+      color: #08231b;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-message.theirs .chat-bubble {
+      background: var(--panel-2);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .chat-meta {
+      color: var(--muted);
+      font-size: 10px;
+      padding: 0 4px;
+    }
+
+    .chat-composer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .chat-input {
+      min-height: 44px;
+      max-height: 110px;
+      resize: none;
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .chat-send {
+      min-width: 74px;
+      height: 44px;
+      align-self: end;
+    }
+
+    @media (max-width: 760px) {
+      .chat-panel {
+        min-height: 390px;
+      }
+
+      .chat-messages {
+        max-height: 360px;
+      }
+
+      .chat-composer {
+        grid-template-columns: 1fr auto;
+      }
+    }
+
+    @media (max-width: 1040px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        padding: 12px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .subtitle {
+        max-width: 92vw;
+      }
+
+      .transport {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .range {
+        grid-column: 1 / -1;
+        grid-template-columns: 48px minmax(0, 1fr) 48px;
+        order: -1;
+      }
+
+      .side {
+        grid-template-columns: 1fr;
+      }
+
+      video {
+        min-height: 46vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="stage" aria-label="Movie player">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark" aria-hidden="true">▶</div>
+          <div>
+            <h1>Sync Movie Room</h1>
+            <p class="subtitle" id="sourceLabel">No movie loaded</p>
+          </div>
+        </div>
+        <div class="status-pill" title="Peer connection status">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Offline</span>
+        </div>
+      </header>
+
+      <div class="player-wrap">
+        <video id="video" playsinline controls autoplay preload="metadata"></video>
+        <div class="empty-state" id="emptyState">
+          <div>
+            <strong>Load a movie</strong>
+            <span>Use a direct video URL or choose a file from this device, then connect one more screen for synced controls.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="transport" aria-label="Synced controls">
+        <button class="icon" id="playPause" title="Play or pause">▶</button>
+        <button class="icon" id="back10" title="Back 10 seconds">↺</button>
+        <div class="range">
+          <span id="currentTime">00:00</span>
+          <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek">
+          <span id="duration">00:00</span>
+        </div>
+        <button class="icon" id="forward10" title="Forward 10 seconds">↻</button>
+        <select id="rate" aria-label="Playback speed">
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2x</option>
+        </select>
+        <button class="icon" id="syncNow" title="Sync now">⟳</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>Movie Source</h2>
+        <div class="stack">
+          <div class="tabs" role="tablist" aria-label="Source type">
+            <button class="tab active" id="urlTab" type="button">URL</button>
+            <button class="tab" id="fileTab" type="button">Device</button>
+          </div>
+
+          <div class="stack" id="urlPane">
+            <label>
+              Video URL
+              <input id="videoUrl" type="url" placeholder="https://example.com/movie.mp4">
+            </label>
+            <button class="primary" id="loadUrl">Load URL</button>
+          </div>
+
+          <div class="stack hidden" id="filePane">
+            <label>
+              Video file
+              <input id="fileInput" type="file" accept="video/*,.mkv,.mp4,.webm,.ogg,.mov">
+            </label>
+            <p class="tiny">Local files stay on each device. For sync, both screens should pick the same file.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Room</h2>
+        <div class="stack">
+          <button class="primary" id="hostRoom">Host Room</button>
+          <label>
+            Invite link
+            <input id="roomLink" type="url" readonly placeholder="Host a room to generate a link">
+          </label>
+          <button id="copyLink">Copy Invite Link</button>
+          <div class="log" id="roomLog">Host a room, send the link, and the other person joins automatically.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Sync</h2>
+        <div class="stack">
+          <div class="inline">
+            <button class="icon" id="pushState" title="Send current playback state">⇄</button>
+            <span class="tiny">Send this screen's current play time to the connected screen.</span>
+          </div>
+          <label>
+            Drift tolerance
+            <select id="driftTolerance">
+              <option value="0.35">Tight</option>
+              <option value="0.75" selected>Normal</option>
+              <option value="1.5">Relaxed</option>
+            </select>
+          </label>
+          <p class="tiny" id="lastSync">Last sync: never</p>
+        </div>
+      </section>
+
+      <section class="panel chat-panel">
+        <div class="chat-header">
+          <h2>Chat</h2>
+          <span class="chat-status" id="chatStatus">Waiting for partner</span>
+        </div>
+
+        <div class="chat-messages" id="chatMessages" aria-live="polite">
+          <div class="chat-empty" id="chatEmpty">
+            When the other person joins, you can chat here while watching the movie.
+          </div>
+        </div>
+
+        <div class="chat-composer">
+          <textarea
+            id="chatInput"
+            class="chat-input"
+            rows="1"
+            maxlength="1000"
+            placeholder="Type a message..."
+            aria-label="Chat message"
+          ></textarea>
+          <button class="primary chat-send" id="chatSend" type="button">Send</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const video = $("video");
+    const state = {
+      pc: null,
+      peer: null,
+      channel: null,
+      localStream: null,
+      mediaSenders: [],
+      mediaCall: null,
+      roomId: null,
+      remotePeerId: null,
+      applyingRemote: false,
+      currentSource: null,
+      objectUrl: null,
+      mode: "url",
+      connected: false,
+      isOwner: false,
+      remoteTimeline: null,
+      chatMessages: []
+    };
+
+    const controls = {
+      sourceLabel: $("sourceLabel"),
+      statusDot: $("statusDot"),
+      statusText: $("statusText"),
+      emptyState: $("emptyState"),
+      currentTime: $("currentTime"),
+      duration: $("duration"),
+      seek: $("seek"),
+      playPause: $("playPause"),
+      rate: $("rate"),
+      roomLog: $("roomLog"),
+      roomLink: $("roomLink"),
+      lastSync: $("lastSync"),
+      chatMessages: $("chatMessages"),
+      chatEmpty: $("chatEmpty"),
+      chatInput: $("chatInput"),
+      chatSend: $("chatSend"),
+      chatStatus: $("chatStatus")
+    };
+
+    function setLog(message) {
+      controls.roomLog.textContent = message;
+    }
+
+
+    function updateChatStatus() {
+      if (state.connected) {
+        controls.chatStatus.textContent = "Partner connected";
+      } else {
+        controls.chatStatus.textContent = "Waiting for partner";
+      }
+    }
+
+    function addChatMessage(text, mine, sentAt = Date.now()) {
+      const cleanText = String(text || "").trim();
+      if (!cleanText) return;
+
+      state.chatMessages.push({
+        text: cleanText,
+        mine: Boolean(mine),
+        sentAt: Number(sentAt) || Date.now()
+      });
+
+      // Keep the in-memory chat lightweight.
+      if (state.chatMessages.length > 200) {
+        state.chatMessages.shift();
+      }
+
+      renderChatMessages();
+    }
+
+    function renderChatMessages() {
+      controls.chatMessages.innerHTML = "";
+
+      if (!state.chatMessages.length) {
+        controls.chatMessages.appendChild(controls.chatEmpty);
+        return;
+      }
+
+      state.chatMessages.forEach((message) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = `chat-message ${message.mine ? "mine" : "theirs"}`;
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble";
+        bubble.textContent = message.text;
+
+        const meta = document.createElement("div");
+        meta.className = "chat-meta";
+        meta.textContent = `${message.mine ? "You" : "Partner"} • ${
+          new Date(message.sentAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+          })
+        }`;
+
+        wrapper.appendChild(bubble);
+        wrapper.appendChild(meta);
+        controls.chatMessages.appendChild(wrapper);
+      });
+
+      controls.chatMessages.scrollTop = controls.chatMessages.scrollHeight;
+    }
+
+    function sendChatMessage() {
+      const text = controls.chatInput.value.trim();
+      if (!text) return;
+
+      if (!state.connected || !isChannelOpen()) {
+        setLog("Connect to your partner before sending a chat message.");
+        updateChatStatus();
+        return;
+      }
+
+      const sentAt = Date.now();
+
+      // Show the message immediately on this screen.
+      addChatMessage(text, true, sentAt);
+
+      // Send it through the same reliable PeerJS data channel used for sync.
+      sendRaw({
+        type: "chat",
+        text,
+        sentAt
+      });
+
+      controls.chatInput.value = "";
+      controls.chatInput.focus();
+    }
+
+
+    function setStatus(label, ready = false) {
+      controls.statusText.textContent = label;
+      controls.statusDot.classList.toggle("ready", ready);
+    }
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
+      const total = Math.floor(seconds);
+      const hrs = Math.floor(total / 3600);
+      const mins = Math.floor((total % 3600) / 60);
+      const secs = total % 60;
+      const mm = String(mins).padStart(2, "0");
+      const ss = String(secs).padStart(2, "0");
+      return hrs ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
+    }
+
+    function displayTimeline() {
+      if (!state.isOwner && state.remoteTimeline) {
+        const { time, duration, paused, receivedAt } = state.remoteTimeline;
+        const drift = paused ? 0 : (Date.now() - receivedAt) / 1000;
+        return {
+          time: Math.max(0, time + drift),
+          duration,
+          paused
+        };
+      }
+
+      return {
+        time: video.currentTime || 0,
+        duration: video.duration,
+        paused: video.paused
+      };
+    }
+
+    function updateClock() {
+      const timeline = displayTimeline();
+      controls.currentTime.textContent = formatTime(timeline.time);
+      controls.duration.textContent = formatTime(timeline.duration);
+      const duration = Number.isFinite(timeline.duration) ? timeline.duration : 0;
+      controls.seek.value = duration ? Math.round((timeline.time / duration) * 1000) : 0;
+      controls.playPause.textContent = timeline.paused ? "▶" : "Ⅱ";
+    }
+
+    function sourceIdFor(kind, value) {
+      return `${kind}:${value || ""}`.slice(0, 500);
+    }
+
+    function clearPublishedStream() {
+      const hadPublishedStream = state.mediaSenders.length > 0 || Boolean(state.localStream);
+
+      if (state.pc && state.mediaSenders.length) {
+        state.mediaSenders.forEach((sender) => {
+          try {
+            state.pc.removeTrack(sender);
+          } catch {
+            // Sender may already be detached after a reconnect.
+          }
+        });
+      }
+
+      if (state.localStream) {
+        state.localStream.getTracks().forEach((track) => track.stop());
+      }
+
+      if (state.mediaCall) {
+        try {
+          state.mediaCall.close();
+        } catch {
+          // Media call may already be closed by PeerJS.
+        }
+      }
+
+      state.localStream = null;
+      state.mediaSenders = [];
+      state.mediaCall = null;
+      return hadPublishedStream;
+    }
+
+    function loadSource(kind, value, label, options = {}) {
+      const { remote = false } = options;
+      if (state.objectUrl && state.objectUrl !== value) {
+        URL.revokeObjectURL(state.objectUrl);
+        state.objectUrl = null;
+      }
+      if (kind === "file") {
+        state.objectUrl = value;
+      }
+      if (!remote) {
+        state.isOwner = true;
+      }
+      state.remoteTimeline = null;
+      video.srcObject = null;
+
+      state.currentSource = {
+        kind,
+        value: kind === "url" ? value : "",
+        label,
+        id: sourceIdFor(kind, kind === "url" ? value : label)
+      };
+
+      video.src = value;
+      video.load();
+      controls.sourceLabel.textContent = label;
+      controls.emptyState.classList.add("hidden");
+
+      const removedPublishedStream = state.isOwner && !remote ? clearPublishedStream() : false;
+
+      if (!remote) {
+        broadcast({
+          type: "source",
+          source: state.currentSource,
+          time: video.currentTime,
+          duration: Number.isFinite(video.duration) ? video.duration : null,
+          paused: video.paused,
+          rate: video.playbackRate
+        });
+      }
+
+      if (!remote && state.connected && kind === "file") {
+        setLog("Local file loaded. Updating the connected viewer...");
+        publishCurrentStream({ renegotiate: true }).catch(() => {
+          setLog("Could not update the viewer stream. Create a fresh host code and reconnect.");
+        });
+      } else if (!remote && state.connected && removedPublishedStream) {
+        sendRaw({ type: "media-ended" });
+        sendRenegotiationOffer().catch(() => {
+          setLog("Source changed. If the viewer still sees the old stream, reconnect with fresh codes.");
+        });
+      }
+    }
+
+    function isChannelOpen() {
+      return Boolean(state.channel && (state.channel.readyState === "open" || state.channel.open === true));
+    }
+
+    function sendRaw(payload) {
+      if (isChannelOpen()) {
+        state.channel.send(JSON.stringify({ ...payload, sentAt: Date.now() }));
+      }
+    }
+
+    function broadcast(payload) {
+      if (!state.applyingRemote && isChannelOpen()) {
+        sendRaw(payload);
+      }
+    }
+
+    function playbackSnapshot(type = "state") {
+      return {
+        type,
+        time: video.currentTime || 0,
+        duration: Number.isFinite(video.duration) ? video.duration : null,
+        paused: video.paused,
+        rate: video.playbackRate,
+        source: state.currentSource
+      };
+    }
+
+    function sendPlayback(type = "state") {
+      if (state.applyingRemote || !state.isOwner) return;
+      broadcast(playbackSnapshot(type));
+      controls.lastSync.textContent = `Last sync: sent at ${new Date().toLocaleTimeString()}`;
+    }
+
+    async function applyRemotePlayback(message) {
+      state.applyingRemote = true;
+      const tolerance = Number($("driftTolerance").value);
+      const viewingRemoteStream = !state.isOwner && video.srcObject;
+
+      if (message.source && state.currentSource?.id !== message.source.id) {
+        if (message.source.kind === "url" && message.source.value) {
+          loadSource("url", message.source.value, message.source.label || message.source.value, { remote: true });
+          setLog("Remote URL loaded. Controls are synced.");
+        } else {
+          setLog(`Remote source: "${message.source.label}". Waiting for host stream or choose the same file here.`);
+        }
+      }
+
+      const remoteTime = Number(message.time) || 0;
+      state.remoteTimeline = {
+        time: remoteTime,
+        duration: Number.isFinite(message.duration) ? message.duration : null,
+        paused: Boolean(message.paused),
+        receivedAt: Date.now()
+      };
+
+      video.playbackRate = Number(message.rate) || 1;
+      controls.rate.value = String(video.playbackRate);
+
+      if (!viewingRemoteStream) {
+        try {
+          if (Number.isFinite(video.duration) && Math.abs(video.currentTime - remoteTime) > tolerance) {
+            video.currentTime = Math.min(Math.max(remoteTime, 0), video.duration);
+          } else if (!Number.isFinite(video.duration) && Math.abs(video.currentTime - remoteTime) > tolerance) {
+            video.currentTime = Math.max(remoteTime, 0);
+          }
+        } catch {
+          setLog("Timeline will sync after the video metadata loads.");
+        }
+      }
+
+      try {
+        if (viewingRemoteStream) {
+          await video.play();
+        } else if (message.paused) {
+          video.pause();
+        } else {
+          await video.play();
+        }
+      } catch (error) {
+        setLog("Browser blocked autoplay. Press play once, then sync again.");
+      }
+
+      controls.lastSync.textContent = `Last sync: received at ${new Date().toLocaleTimeString()}`;
+      updateClock();
+      setTimeout(() => {
+        state.applyingRemote = false;
+      }, 150);
+    }
+
+    async function applyOwnerCommand(command, message = {}) {
+      if (!state.isOwner) return;
+
+      if (command === "play") {
+        await video.play();
+      }
+
+      if (command === "pause") {
+        video.pause();
+      }
+
+      if (command === "seek") {
+        const target = Number(message.time) || 0;
+        const end = Number.isFinite(video.duration) ? video.duration : target;
+        video.currentTime = Math.min(Math.max(target, 0), end);
+      }
+
+      if (command === "rate") {
+        video.playbackRate = Number(message.rate) || 1;
+        controls.rate.value = String(video.playbackRate);
+      }
+
+      if (command === "sync") {
+        sendPlayback("state");
+        return;
+      }
+
+      setTimeout(() => sendPlayback(command), 80);
+    }
+
+    function sendCommand(command, payload = {}) {
+      broadcast({
+        type: "command",
+        command,
+        ...payload
+      });
+      controls.lastSync.textContent = `Last sync: command sent at ${new Date().toLocaleTimeString()}`;
+    }
+
+    function requestOwnerAction(command, payload = {}) {
+      if (state.isOwner) {
+        applyOwnerCommand(command, payload).catch(() => setLog("This action could not be applied."));
+      } else {
+        sendCommand(command, payload);
+      }
+    }
+
+    function handleMessage(event) {
+      let message;
+      try {
+        const raw = event && typeof event === "object" && "data" in event ? event.data : event;
+        message = typeof raw === "string" ? JSON.parse(raw) : raw;
+      } catch {
+        return;
+      }
+
+      if (!message || typeof message !== "object") return;
+
+      if (message.type === "chat") {
+        addChatMessage(message.text, false, message.sentAt);
+        return;
+      }
+
+      if (message.type === "command") {
+        applyOwnerCommand(message.command, message).catch(() => setLog("Remote command could not be applied."));
+        return;
+      }
+
+      if (message.type === "media-ended") {
+        if (!state.isOwner && video.srcObject) {
+          video.srcObject.getTracks().forEach((track) => track.stop());
+          video.srcObject = null;
+        }
+        return;
+      }
+
+      if (message.type === "renegotiate-offer") {
+        answerRenegotiation(message.description).catch(() => {
+          setLog("Could not accept the updated media connection. Reconnect with fresh codes.");
+        });
+        return;
+      }
+
+      if (message.type === "renegotiate-answer") {
+        applyRenegotiationAnswer(message.description).catch(() => {
+          setLog("Could not finish the media update. Reconnect with fresh codes.");
+        });
+        return;
+      }
+
+      if (message.type === "source" || message.type === "state" || message.type === "play" || message.type === "pause" || message.type === "seek" || message.type === "rate") {
+        applyRemotePlayback(message);
+      }
+    }
+
+    function attachChannel(channel) {
+      state.channel = channel;
+      const markOpen = () => {
+        state.connected = true;
+        setStatus("Connected", true);
+        updateChatStatus();
+        setLog("Connected. Either screen can control playback now.");
+        sendPlayback("state");
+      };
+      const markClosed = () => {
+        state.connected = false;
+        setStatus("Disconnected", false);
+        updateChatStatus();
+        setLog("Connection closed.");
+      };
+
+      if (typeof channel.on === "function" && "peer" in channel) {
+        state.remotePeerId = channel.peer;
+        channel.on("open", markOpen);
+        channel.on("close", markClosed);
+        channel.on("data", handleMessage);
+        channel.on("error", () => setLog("Room connection error. Create a fresh link and try again."));
+        if (channel.open) markOpen();
+        return;
+      }
+
+      channel.onopen = markOpen;
+      channel.onclose = markClosed;
+      channel.onmessage = handleMessage;
+    }
+
+    function showRemoteStream(stream) {
+      if (!stream) return;
+      state.isOwner = false;
+      state.remoteTimeline = state.remoteTimeline || {
+        time: 0,
+        duration: null,
+        paused: false,
+        receivedAt: Date.now()
+      };
+      video.srcObject = stream;
+      video.removeAttribute("src");
+      controls.sourceLabel.textContent = "Remote stream";
+      controls.emptyState.classList.add("hidden");
+      video.play().catch(() => setLog("Press play once to start the remote stream."));
+    }
+
+    function createRoomId() {
+      const bytes = new Uint8Array(9);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, (byte) => byte.toString(36).padStart(2, "0")).join("").slice(0, 14);
+    }
+
+    function hostPeerId(roomId) {
+      return `buddymovie-${roomId}-host`;
+    }
+
+    function roomUrl(roomId) {
+      const url = new URL(location.href);
+      url.searchParams.set("room", roomId);
+      return url.toString();
+    }
+
+    function ensurePeerJs() {
+      if (typeof Peer === "undefined") {
+        throw new Error("Room service did not load. Check your internet connection and refresh.");
+      }
+    }
+
+    function closePeerRoom() {
+      clearPublishedStream();
+      if (state.peer) {
+        try {
+          state.peer.destroy();
+        } catch {
+          // Peer may already be closed.
+        }
+      }
+      state.peer = null;
+      state.remotePeerId = null;
+      state.connected = false;
+    }
+
+    function attachPeerEvents(peer) {
+      peer.on("disconnected", () => {
+        setStatus("Disconnected", false);
+        setLog("Room service disconnected. Refresh or create a fresh link.");
+      });
+      peer.on("error", (error) => {
+        const message = error?.type === "unavailable-id"
+          ? "This room link already exists. Host a new room."
+          : "Room service error. Refresh and try again.";
+        setStatus("Room error", false);
+        setLog(message);
+      });
+      peer.on("call", (call) => {
+        state.mediaCall = call;
+        call.answer();
+        call.on("stream", showRemoteStream);
+        call.on("close", () => setLog("Host stream closed."));
+        call.on("error", () => setLog("Could not receive host stream."));
+      });
+    }
+
+    function callPeerWithStream(peerId, stream) {
+      if (!state.peer || !peerId || !stream) return;
+      if (state.mediaCall) {
+        try {
+          state.mediaCall.close();
+        } catch {
+          // Previous media call may already be closed.
+        }
+      }
+      state.mediaCall = state.peer.call(peerId, stream);
+      state.mediaCall.on("error", () => setLog("Could not send the movie stream. Try reconnecting."));
+      state.mediaCall.on("close", () => setLog("Movie stream call closed."));
+    }
+
+    function hostRoom() {
+      ensurePeerJs();
+      closePeerRoom();
+      state.isOwner = true;
+      state.roomId = createRoomId();
+      const peerId = hostPeerId(state.roomId);
+      state.peer = new Peer(peerId);
+      attachPeerEvents(state.peer);
+
+      controls.roomLink.value = roomUrl(state.roomId);
+      setStatus("Opening room", false);
+      setLog("Creating room link...");
+
+      state.peer.on("open", () => {
+        setStatus("Room ready", false);
+        setLog("Send this invite link. The other person will join automatically.");
+      });
+
+      state.peer.on("connection", (connection) => {
+        state.remotePeerId = connection.peer;
+        attachChannel(connection);
+        connection.on("open", () => {
+          sendPlayback("state");
+          if (state.currentSource?.kind === "file") {
+            publishCurrentStream().catch(() => setLog("Could not start the movie stream."));
+          }
+        });
+      });
+    }
+
+    function joinRoom(roomId) {
+      ensurePeerJs();
+      closePeerRoom();
+      state.isOwner = false;
+      state.roomId = roomId;
+      state.peer = new Peer();
+      attachPeerEvents(state.peer);
+
+      controls.roomLink.value = roomUrl(roomId);
+      setStatus("Joining", false);
+      setLog("Joining room...");
+
+      state.peer.on("open", () => {
+        const connection = state.peer.connect(hostPeerId(roomId), { reliable: true });
+        state.remotePeerId = connection.peer;
+        attachChannel(connection);
+      });
+    }
+
+    function createPeer() {
+      if (state.pc) {
+        clearPublishedStream();
+        state.pc.close();
+      }
+      state.mediaSenders = [];
+      state.pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      });
+      state.pc.onconnectionstatechange = () => {
+        const value = state.pc.connectionState;
+        if (value === "connected") setStatus("Connected", true);
+        if (value === "connecting") setStatus("Connecting", false);
+        if (value === "failed" || value === "disconnected" || value === "closed") {
+          setStatus(value, false);
+          if (value === "failed") {
+            setLog("Connection failed. Try creating fresh codes. Some restricted networks need a TURN server.");
+          }
+        }
+      };
+      state.pc.oniceconnectionstatechange = () => {
+        if (state.pc.iceConnectionState === "checking") setLog("Checking network path...");
+        if (state.pc.iceConnectionState === "connected") setLog("Network path connected. Waiting for controls...");
+        if (state.pc.iceConnectionState === "failed") {
+          setLog("Network path failed. Try another network, or both users can load the same URL and reconnect.");
+        }
+      };
+      state.pc.ondatachannel = (event) => attachChannel(event.channel);
+      state.pc.ontrack = (event) => {
+        const [stream] = event.streams;
+        showRemoteStream(stream);
+      };
+      return state.pc;
+    }
+
+    function waitForMetadata() {
+      if (video.readyState >= 1) return Promise.resolve();
+      return new Promise((resolve) => {
+        const done = () => {
+          video.removeEventListener("loadedmetadata", done);
+          resolve();
+        };
+        video.addEventListener("loadedmetadata", done, { once: true });
+        setTimeout(done, 2200);
+      });
+    }
+
+    async function publishCurrentStream(options = {}) {
+      const { renegotiate = false } = options;
+      if ((!state.pc && !state.peer) || !state.isOwner || !video.src || state.currentSource?.kind !== "file") {
+        return false;
+      }
+
+      await waitForMetadata();
+      const capture = video.captureStream || video.mozCaptureStream;
+      if (!capture) {
+        setLog("This browser cannot stream the loaded video. URL sync will still work.");
+        return false;
+      }
+
+      try {
+        clearPublishedStream();
+        const stream = capture.call(video);
+        state.localStream = stream;
+        stream.getTracks().forEach((track) => {
+          if (state.pc) {
+            state.mediaSenders.push(state.pc.addTrack(track, stream));
+          }
+        });
+        if (stream.getTracks().length) {
+          if (state.peer && state.remotePeerId) {
+            callPeerWithStream(state.remotePeerId, stream);
+          } else if (renegotiate && state.connected) {
+            await sendRenegotiationOffer();
+          }
+          setLog(renegotiate ? "Viewer stream updated." : "Movie stream attached. Share the host code with the joiner.");
+          return true;
+        } else {
+          setLog("No stream tracks were found yet. Press play, then create the host code again.");
+        }
+      } catch {
+        setLog("This source cannot be streamed by the browser. Try a local file or a CORS-enabled video URL.");
+      }
+      return false;
+    }
+
+    function waitForIceGathering(pc, timeout = 10000) {
+      if (pc.iceGatheringState === "complete") return Promise.resolve();
+      return new Promise((resolve) => {
+        let resolved = false;
+        const finish = () => {
+          if (resolved) return;
+          resolved = true;
+          pc.removeEventListener("icegatheringstatechange", checkState);
+          pc.removeEventListener("icecandidate", checkCandidate);
+          resolve();
+        };
+        const checkState = () => {
+          if (pc.iceGatheringState === "complete") finish();
+        };
+        const checkCandidate = (event) => {
+          if (!event.candidate) finish();
+        };
+        const done = () => {
+          finish();
+        };
+        pc.addEventListener("icegatheringstatechange", checkState);
+        pc.addEventListener("icecandidate", checkCandidate);
+        setTimeout(done, timeout);
+      });
+    }
+
+    async function sendRenegotiationOffer() {
+      if (!state.pc || !state.channel || state.channel.readyState !== "open") return;
+      setLog("Updating media connection...");
+      const offer = await state.pc.createOffer();
+      await state.pc.setLocalDescription(offer);
+      await waitForIceGathering(state.pc);
+      sendRaw({
+        type: "renegotiate-offer",
+        description: state.pc.localDescription
+      });
+    }
+
+    async function answerRenegotiation(description) {
+      if (!state.pc) return;
+      await state.pc.setRemoteDescription(description);
+      const answer = await state.pc.createAnswer();
+      await state.pc.setLocalDescription(answer);
+      await waitForIceGathering(state.pc);
+      sendRaw({
+        type: "renegotiate-answer",
+        description: state.pc.localDescription
+      });
+      setLog("Media connection updated.");
+    }
+
+    async function applyRenegotiationAnswer(description) {
+      if (!state.pc) return;
+      await state.pc.setRemoteDescription(description);
+      setLog("Viewer media connection updated.");
+    }
+
+    function encodeSignal(description) {
+      return btoa(unescape(encodeURIComponent(JSON.stringify(description))));
+    }
+
+    function decodeSignal(text) {
+      return JSON.parse(decodeURIComponent(escape(atob(text.trim()))));
+    }
+
+    async function makeOffer() {
+      const pc = createPeer();
+      attachChannel(pc.createDataChannel("sync"));
+      await publishCurrentStream();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await waitForIceGathering(pc);
+      controls.signalBox.value = encodeSignal(pc.localDescription);
+      setStatus("Offer ready", false);
+      setLog("Send this host code to the joiner. After they answer, paste their answer here and apply it.");
+    }
+
+    async function acceptOffer() {
+      const offer = decodeSignal(controls.signalBox.value);
+      const pc = createPeer();
+      await pc.setRemoteDescription(offer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await waitForIceGathering(pc);
+      controls.signalBox.value = encodeSignal(pc.localDescription);
+      setStatus("Answer ready", false);
+      setLog("Send this answer code back to the host.");
+    }
+
+    async function applySignal() {
+      if (!state.pc) {
+        setLog("Create or join a room first.");
+        return;
+      }
+      const description = decodeSignal(controls.signalBox.value);
+      await state.pc.setRemoteDescription(description);
+      setStatus("Connecting", false);
+      setLog("Connecting...");
+    }
+
+    $("urlTab").addEventListener("click", () => {
+      state.mode = "url";
+      $("urlTab").classList.add("active");
+      $("fileTab").classList.remove("active");
+      $("urlPane").classList.remove("hidden");
+      $("filePane").classList.add("hidden");
+    });
+
+    $("fileTab").addEventListener("click", () => {
+      state.mode = "file";
+      $("fileTab").classList.add("active");
+      $("urlTab").classList.remove("active");
+      $("filePane").classList.remove("hidden");
+      $("urlPane").classList.add("hidden");
+    });
+
+    $("loadUrl").addEventListener("click", () => {
+      const url = $("videoUrl").value.trim();
+      if (!url) return;
+      loadSource("url", url, url.split("/").pop() || url);
+    });
+
+    $("fileInput").addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      state.objectUrl = URL.createObjectURL(file);
+      loadSource("file", state.objectUrl, file.name);
+    });
+
+    controls.playPause.addEventListener("click", () => {
+      const timeline = displayTimeline();
+      requestOwnerAction(timeline.paused ? "play" : "pause");
+    });
+
+    $("back10").addEventListener("click", () => {
+      const timeline = displayTimeline();
+      requestOwnerAction("seek", { time: Math.max(0, timeline.time - 10) });
+    });
+
+    $("forward10").addEventListener("click", () => {
+      const timeline = displayTimeline();
+      const end = Number.isFinite(timeline.duration) ? timeline.duration : timeline.time + 10;
+      requestOwnerAction("seek", { time: Math.min(end, timeline.time + 10) });
+    });
+
+    controls.seek.addEventListener("input", () => {
+      const timeline = displayTimeline();
+      if (!Number.isFinite(timeline.duration)) return;
+      const target = (Number(controls.seek.value) / 1000) * timeline.duration;
+      if (state.isOwner) {
+        video.currentTime = target;
+      } else {
+        state.remoteTimeline = {
+          ...state.remoteTimeline,
+          time: target,
+          paused: true,
+          receivedAt: Date.now()
+        };
+      }
+      updateClock();
+    });
+
+    controls.seek.addEventListener("change", () => {
+      const timeline = displayTimeline();
+      requestOwnerAction("seek", { time: timeline.time });
+    });
+
+    controls.rate.addEventListener("change", () => {
+      requestOwnerAction("rate", { rate: Number(controls.rate.value) });
+    });
+
+    $("syncNow").addEventListener("click", () => requestOwnerAction("sync"));
+    $("pushState").addEventListener("click", () => requestOwnerAction("sync"));
+    $("hostRoom").addEventListener("click", () => {
+      try {
+        hostRoom();
+      } catch (error) {
+        setLog(error.message);
+      }
+    });
+
+    $("copyLink").addEventListener("click", async () => {
+      if (!controls.roomLink.value) {
+        setLog("Host a room first.");
+        return;
+      }
+      await navigator.clipboard.writeText(controls.roomLink.value);
+      setLog("Invite link copied.");
+    });
+
+    video.addEventListener("loadedmetadata", updateClock);
+    video.addEventListener("timeupdate", updateClock);
+    video.addEventListener("play", () => {
+      updateClock();
+      sendPlayback("play");
+    });
+    video.addEventListener("pause", () => {
+      updateClock();
+      sendPlayback("pause");
+    });
+    video.addEventListener("seeked", () => sendPlayback("seek"));
+    video.addEventListener("ratechange", () => {
+      controls.rate.value = String(video.playbackRate);
+    });
+
+    setInterval(() => {
+      if (!video.paused && state.connected) sendPlayback("state");
+    }, 5000);
+
+
+    controls.chatSend.addEventListener("click", sendChatMessage);
+
+    controls.chatInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendChatMessage();
+      }
+    });
+
+    controls.chatInput.addEventListener("input", () => {
+      // Small auto-grow effect, similar to modern chat apps.
+      controls.chatInput.style.height = "auto";
+      controls.chatInput.style.height =
+        Math.min(controls.chatInput.scrollHeight, 110) + "px";
+    });
+
+    setInterval(updateClock, 500);
+
+    const initialRoomId = new URL(location.href).searchParams.get("room");
+    if (initialRoomId) {
+      try {
+        joinRoom(initialRoomId);
+      } catch (error) {
+        setLog(error.message);
+      }
+    }
+
+    updateChatStatus();
+    renderChatMessages();
+    updateClock();
+  </script>
+</body>
+</html>
